@@ -1,0 +1,20 @@
+{
+  "name": "swagger-to-ts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "gen": "tsc --lib esnext index.ts && node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@manifoldco/swagger-to-ts": "^2.0.0",
+    "@types/js-yaml": "^3.12.4",
+    "@types/node": "^14.0.5",
+    "camelize": "^1.0.0",
+    "js-yaml": "^3.14.0",
+    "typescript": "^3.9.3"
+  }
+}
