@@ -100,11 +100,12 @@ function generateMember(memberDef: any): FunctionPropertyDef {
   }
 }
 
-function generateProperties(propertyDefs: any[]): PropertyDef[] {
+function generateProperties(propertyDefs: any[], required: string[] = []): PropertyDef[] {
   return Object.entries(propertyDefs)
     .map(([name, schema]) => ({
       name,
-      typeDef: getTypeDef(schema)
+      typeDef: getTypeDef(schema),
+      optional: !required.includes(name)
     }));
 }
 
@@ -115,9 +116,9 @@ function generateModel(name: string, def: any): ModelDef {
     props = def.enum; 
     typeName = ENUM;
   } else if (def.allOf) {
-    console.warn(`[WARNIN] - allOf not supported, model ${name} will be generated empty.`);
+    console.warn(`[WARNING] - allOf not supported, model ${name} will be generated empty.`);
   } else {
-    props = generateProperties(def.properties);
+    props = generateProperties(def.properties, def.required);
   }
 
   return {

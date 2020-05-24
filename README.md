@@ -110,5 +110,4 @@ export interface UsersClient {
 * Supports only OpenAPI v2
 * Doesn't support `allOf` attribute
 * Doesn't handle duplicated `operationId` attributes on different paths
-* Doesn't support required model properties (yet)
 * Doesn't import the generated models into the generated client file (yet)

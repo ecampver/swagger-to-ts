@@ -86,7 +86,7 @@ function makeArgument(argumentDef: ArgumentDef): ts.ParameterDeclaration {
 function makeFunctionMember(functionDef: FunctionPropertyDef): ts.PropertySignature {
   const { name, args, returnTypeDef } = functionDef;
 
-  args.sort((arg1, arg2) => arg1.optional ? 1 : -1);
+  args.sort((arg, _) => arg.optional ? 1 : -1);
 
   const returnTypeNode = makeTypeNode(returnTypeDef);
   const promiseNode = ts.createTypeReferenceNode(PROMISE, /*typeArguments*/ [returnTypeNode]);
@@ -120,11 +120,11 @@ function makeClientInterface(clientDef: ClientDef): ts.InterfaceDeclaration {
 }
 
 function makeModelProperty(propertyDef: PropertyDef): ts.PropertySignature {
-  const { name, typeDef } = propertyDef;
+  const { name, typeDef, optional } = propertyDef;
   return ts.createPropertySignature(
     /*modifiers*/ undefined,
     /*name*/ name,
-    /*questionToken*/ QUESTION_TOKEN,
+    /*questionToken*/ optional ? QUESTION_TOKEN : undefined,
     /*type*/ makeTypeNode(typeDef),
     /*initializer*/ undefined
   );
@@ -146,6 +146,8 @@ function makeModelType(modelDef: ModelDef): ts.DeclarationStatement {
       /*members*/ (<string[]>properties).map(makeEnumMember)
     );
   }
+
+  properties.sort((prop, _) => prop.optional ? 1 : -1);
 
   return ts.createInterfaceDeclaration(
     /*decorators*/ undefined,

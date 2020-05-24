@@ -6,6 +6,7 @@ export interface TypeDef {
 export interface PropertyDef {
   name: string;
   typeDef: TypeDef;
+  optional: boolean;
 }
 
 export interface ModelDef {
