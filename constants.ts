@@ -1,0 +1,10 @@
+export const INT = 'int';
+export const STR = 'str';
+export const BOOL = 'bool';
+export const DATE = 'Date';
+export const EMPTY = 'empty';
+export const ENUM = 'enum';
+export const ARRAY = 'array';
+export const OBJECT = 'object';
+export const MAP = 'map';
+export const REF = '$ref';

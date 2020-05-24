@@ -1,46 +1,37 @@
 import { safeLoad } from 'js-yaml';
 import * as fs from 'fs';
 import * as camelize from 'camelize';
+import { INT, STR, BOOL, DATE, EMPTY, ENUM, ARRAY, OBJECT, MAP, REF } from './constants';
+import {
+  TypeDef,
+  PropertyDef,
+  ModelDef,
+  ArgumentDef,
+  FunctionPropertyDef,
+  ClientDef,
+  ApiDef
+} from './types';
 
 
-/*
-integer	integer	int32	signed 32 bits
-long	integer	int64	signed 64 bits
-float	number	float	
-double	number	double	
-string	string		
-byte	string	byte	base64 encoded characters
-binary	string	binary	any sequence of octets
-boolean	boolean		
-date	string	date	As defined by full-date - RFC3339
-dateTime	string	date-time	As defined by date-time - RFC3339
-password	string	password	Used to hint UIs the input needs to be obscured.
-*/
+const DEFAULT_TYPE = STR;
 const typesMap = {
-  'int32': 'int',
-  'int64': 'int',
-  'number': 'int',
-  'integer': 'int',
-  'float': 'int',
-  'double': 'int',
-  'string': 'str',
-  'byte': 'str',
-  'binary': 'str',
-  'password': 'str',
-  'email': 'str',
-  'boolean': 'bool',
-  'date': 'Date',
-  'date-time': 'Date'
+  'int32': INT,
+  'int64': INT,
+  'number': INT,
+  'integer': INT,
+  'float': INT,
+  'double': INT,
+  'string': STR,
+  'byte': STR,
+  'binary': STR,
+  'password': STR,
+  'email': STR,
+  'boolean': BOOL,
+  'date': DATE,
+  'date-time': DATE
 };
-const EMPTY = 'empty';
-const ENUM = 'enum';
-const ARRAY = 'array';
-const OBJECT = 'object';
-const MAP = 'map';
-const REF = '$ref';
-const DEFAULT = 'str';
 
-function getTypeDef(def: any) {
+function getTypeDef(def: any): TypeDef {
   if (!def) {
     return { typeName: EMPTY };
   }
@@ -54,11 +45,11 @@ function getTypeDef(def: any) {
   }
   
   if (def.enum) {
-    return { typeName: ENUM, values: def.enum };
+    return { typeName: ENUM, value: def.enum };
   }
 
   if (def.type === ARRAY) {
-    let name = DEFAULT;
+    let name = DEFAULT_TYPE;
     if (def.items) {
       name = getTypeDef(def.items).typeName;
     }
@@ -66,29 +57,29 @@ function getTypeDef(def: any) {
   }
 
   if (def.type === OBJECT) {
-    let values = [], typeName = OBJECT;
+    let value: TypeDef['value'] = [], typeName = OBJECT;
     if (def.properties) {
-      values = generateProperties(def.properties);
+      value = generateProperties(def.properties);
     } else if (def.additionalProperties) {
-      values = getTypeDef(def.additionalProperties);
+      value = getTypeDef(def.additionalProperties);
       typeName = MAP;
     }
-    return { typeName, values };
+    return { typeName, value };
   }
 
   if (def.format) {
     return { typeName: typesMap[def.format] };
   }
 
-  return { typeName: typesMap[def.type] || DEFAULT };
+  return { typeName: typesMap[def.type] || DEFAULT_TYPE };
 }
 
-function generateResponse(resDef: any) {
+function generateReturnType(resDef: any): TypeDef {
   const success = Object.keys(resDef).find(code => code >= '200' && code < '300');
   return getTypeDef(resDef[success].schema);
 }
 
-function generateParameter(paramDef: any) {
+function generateArgument(paramDef: any): ArgumentDef {
   const { name, required } = paramDef;
   const typeDef = getTypeDef(paramDef);
 
@@ -99,34 +90,33 @@ function generateParameter(paramDef: any) {
   };
 }
 
-function generateMember(memberDef: any) {
+function generateMember(memberDef: any): FunctionPropertyDef {
   const { operationId, parameters = [], responses } = memberDef;  
   return {
     name: operationId,
-    args: parameters.map(generateParameter),
-    responseTypeDef: generateResponse(responses)
+    args: parameters.map(generateArgument),
+    returnTypeDef: generateReturnType(responses)
   }
 }
 
-function generateProperties(propertyDefs: any[]) {
-  return Object.entries(propertyDefs).map(([name, schema]) => ({
-    name,
-    typeDef: getTypeDef(schema)
-  }));
+function generateProperties(propertyDefs: any[]): PropertyDef[] {
+  return Object.entries(propertyDefs)
+    .map(([name, schema]) => ({
+      name,
+      typeDef: getTypeDef(schema)
+    }));
 }
 
-function generateModel(name: string, def: any) {
-  let props = [], typeName = 'object';
+function generateModel(name: string, def: any): ModelDef {
+  let props: PropertyDef[] = [], typeName = OBJECT;
 
   if (def.enum) {
     props = def.enum; 
     typeName = ENUM;
-  } else if (!def.allOf) { // allOf not supported for now
-    try {
-      props = generateProperties(def.properties);
-    } catch(e) {
-      console.log(e, name, def);
-    }
+  } else if (def.allOf) {
+    console.warn(`[WARNIN] - allOf not supported, model ${name} will be generated empty.`);
+  } else {
+    props = generateProperties(def.properties);
   }
 
   return {
@@ -136,15 +126,18 @@ function generateModel(name: string, def: any) {
   }
 }
 
-export function yamlToDef(filePath: string) {
+export function yamlToDef(clientName: string, filePath: string): ApiDef {
   const yamlDef = fs.readFileSync(filePath, 'utf8');
   const yaml = safeLoad(yamlDef)
+
+  const modelsDef: ModelDef[] = Object.entries(yaml.definitions)
+    .map(([name, def]) => generateModel(name, def));
+
   const verbs = Object.values(yaml.paths).flatMap(path => Object.values(path));
-  const clientDef = {
-    name: 'Client',
+  const clientDef: ClientDef = {
+    name: clientName,
     members: verbs.map(generateMember)
   };
-  const modelsDef = Object.entries(yaml.definitions).map(([name, def]) => generateModel(name, def));
-  //console.log(require('util').inspect(modelsDef, true, null));
+
   return { clientDef, modelsDef };
 }

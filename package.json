@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "gen": "tsc --lib esnext index.ts && node index.js",
+    "build": "tsc --lib esnext --outDir ./build index.ts",
+    "start": "node ./build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -15,6 +16,10 @@
     "@types/node": "^14.0.5",
     "camelize": "^1.0.0",
     "js-yaml": "^3.14.0",
-    "typescript": "^3.9.3"
+    "typescript": "^3.9.3",
+    "yargs": "^15.3.1"
+  },
+  "devDependencies": {
+    "@types/yargs": "^15.0.5"
   }
 }
