@@ -11,14 +11,14 @@ npm install -g swagger-to-ts
 ## Usage
 
 ```bash
-Usage: swagger-to-ts [-s path] [-d path] [-c]
+Usage: swagger-to-ts [-s path] [-d path] [-n]
 
 Options:
   --help             Show help                                         [boolean]
   --version          Show version number                               [boolean]
   --source, -s       The swagger yaml file path                       [required]
   --destination, -d  Generated files destination folder path          [required]
-  --clientName, -c   The interface name for the client    [default: "ApiClient"]
+  --clientName, -n   The interface name for the client    [default: "ApiClient"]
 ```
 
 ## Example
@@ -73,6 +73,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/User'
+
 definitions:
   User:
     properties:
@@ -80,29 +81,51 @@ definitions:
         type: integer
       name:
         type: string
+      address:
+        $ref: '#/definitions/Address'
+    required:  
+      - id
+
+  Address:
+    properties:
+      street:
+        type: string
+      number:
+        type: integer
+    required:
+      - street
+      - number
 ```
 
 Let's run the `swagger-to-ts` command:
 
 ```bash
-swagger-to-ts -s api-users.yaml -d codegen/ -c UsersClient
+swagger-to-ts -s api-users.yaml -d codegen/ -n UsersClient
 ```
 
-This will yield two files `codegen/models.ts` and `codgen/client.ts` with the following contents:
+This will yield two files `codegen/models.ts` and `codegen/client.ts` with the following contents:
 
 ```typescript
 // models.ts
 export interface User {
-    id?: number;
+    id: number;
     name?: string;
+    address?: Address;
+}
+export interface Address {
+    number: number;
+    street: string;
 }
 
+
 // client.ts
+import { User } from "./models";
 export interface UsersClient {
     getUsers: () => Promise<unknown>;
     createUser: (user?: User) => Promise<User>;
     getUserById: (userId: number) => Promise<User>;
 }
+
 ```
 
 ## Limitations
@@ -110,4 +133,3 @@ export interface UsersClient {
 * Supports only OpenAPI v2
 * Doesn't support `allOf` attribute
 * Doesn't handle duplicated `operationId` attributes on different paths
-* Doesn't import the generated models into the generated client file (yet)

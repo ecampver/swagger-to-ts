@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
-import { INT, STR, BOOL, EMPTY, ENUM, OBJECT, MAP } from './constants';
+import { INT, STR, BOOL, DATE, EMPTY, ENUM, OBJECT, MAP } from './constants';
 import {
   TypeDef,
   PropertyDef,
@@ -16,6 +16,9 @@ import {
 const KEY = 'key';
 const PROMISE = 'Promise';
 
+const MODELS_MODULE_NAME = 'models';
+const CLIENT_MODULE_NAME = 'client';
+
 const typesMap = {
   [INT]: ts.SyntaxKind.NumberKeyword,
   [STR]: ts.SyntaxKind.StringKeyword,
@@ -23,6 +26,7 @@ const typesMap = {
   [EMPTY]: ts.SyntaxKind.UnknownKeyword
 };
 const QUESTION_TOKEN = ts.createToken(ts.SyntaxKind.QuestionToken);
+const NATIVE_TYPES = new Set([INT, STR, BOOL, DATE, EMPTY, PROMISE]);
 
 function makeTypeNode(typeDef: TypeDef): ts.TypeNode {
   const { typeName, value } = typeDef;
@@ -32,8 +36,8 @@ function makeTypeNode(typeDef: TypeDef): ts.TypeNode {
     return ts.createKeywordTypeNode(primitiveType);
   }
 
-  if (typeName.endsWith('[]')) {
-    const arrayType: ts.TypeNode = makeTypeNode({ typeName: typeName.replace('[]', '') });
+  if (typeDef.array) {
+    const arrayType: ts.TypeNode = makeTypeNode({ typeName });
     return ts.createArrayTypeNode(arrayType);
   }
 
@@ -159,20 +163,65 @@ function makeModelType(modelDef: ModelDef): ts.DeclarationStatement {
   );
 }
 
+function isReferenceType(typeName: string) {
+  return typeName !== ENUM && !NATIVE_TYPES.has(typeName);
+}
+
+function getFunctionPropertyTypeNames(propertyDef: FunctionPropertyDef): string[] {
+  return propertyDef.args.map((arg: ArgumentDef) => arg.typeDef.typeName)
+    .concat(propertyDef.returnTypeDef.typeName)
+    .filter((typeName: string) => isReferenceType(typeName));
+}
+
+function makeModelImports(clientDef: ClientDef): ts.ImportDeclaration {
+  const typeNamesSet = new Set(
+    clientDef.members.flatMap(getFunctionPropertyTypeNames)
+  );
+
+  const importSpecifiers: ts.ImportSpecifier[] = [...typeNamesSet]
+    .map((typeName: string) => ts.createIdentifier(typeName))
+    .map((id: ts.Identifier) => ts.createImportSpecifier(/*propertyName*/ undefined, id));
+
+  const namedImports: ts.NamedImports = ts.createNamedImports(importSpecifiers)
+
+  const importClause: ts.ImportClause = ts.createImportClause(
+    /*name*/ undefined,
+    /*namedBindings*/ namedImports,
+    /*isTypeOnly*/ false
+  );
+
+  const moduleSpecifier: ts.StringLiteral = ts.createStringLiteral(`./${MODELS_MODULE_NAME}`);
+
+  return ts.createImportDeclaration(
+    /*decorators*/ undefined,
+    /*modifiers*/ undefined,
+    /*importClause*/ importClause,
+    /*moduleSpecifier*/ moduleSpecifier
+  );
+}
+
 export function generateCode(apiDef: ApiDef, destinationPath: string) {
-  const clientFilename = 'client.ts';
-  const modelsFilename = 'models.ts';
+  const clientFilename = `${CLIENT_MODULE_NAME}.ts`;
+  const modelsFilename = `${MODELS_MODULE_NAME}.ts`;
 
   const clientInterfaceFile = ts.createSourceFile(clientFilename, '', ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
   const modelsFile = ts.createSourceFile(modelsFilename, '', ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
 
-  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-
   const modelNodes = apiDef.modelsDef.map(makeModelType);
   const clientInterfaceNode = makeClientInterface(apiDef.clientDef);
+  const modelImportsNode = makeModelImports(apiDef.clientDef);
 
-  const modelsCode = printer.printList(ts.ListFormat.MultiLineFunctionBodyStatements, ts.createNodeArray(modelNodes), modelsFile);
-  const clientInterfaceCode = printer.printNode(ts.EmitHint.Unspecified, clientInterfaceNode, clientInterfaceFile);
+  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+  const modelsCode = printer.printList(
+    ts.ListFormat.MultiLineFunctionBodyStatements,
+    ts.createNodeArray(modelNodes),
+    modelsFile
+  );
+  const clientInterfaceCode = printer.printList(
+    ts.ListFormat.MultiLineFunctionBodyStatements,
+    ts.createNodeArray([modelImportsNode, clientInterfaceNode]),
+    modelsFile
+  );
 
   fs.writeFileSync(path.join(destinationPath, modelsFilename), modelsCode);
   fs.writeFileSync(path.join(destinationPath, clientFilename), clientInterfaceCode);

@@ -1,6 +1,7 @@
 export interface TypeDef {
   typeName: string;
   value?: string[] | PropertyDef[] | TypeDef; // enum, object literal type or type reference
+  array?: boolean;
 }
 
 export interface PropertyDef {
@@ -15,11 +16,7 @@ export interface ModelDef {
   properties: string[] | PropertyDef[]; // enum or property definitions
 }
 
-export interface ArgumentDef {
-  name: string;
-  typeDef: TypeDef;
-  optional: boolean;
-}
+export interface ArgumentDef extends PropertyDef {}
 
 export interface FunctionPropertyDef {
   name: string;

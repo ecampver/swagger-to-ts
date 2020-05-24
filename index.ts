@@ -7,7 +7,7 @@ import { ApiDef } from './src/types';
 
 
 const { source, destination, clientName } = yargs
-  .usage('Usage: $0 [-s path] [-d path] [-c]')
+  .usage('Usage: $0 [-s path] [-d path] [-n]')
   .option('source', {
     alias: 's',
     describe: 'The swagger yaml file path',
@@ -21,7 +21,7 @@ const { source, destination, clientName } = yargs
     coerce: path.resolve
   })
   .option('clientName', {
-    alias: 'c',
+    alias: 'n',
     describe: 'The interface name for the client',
     default: 'ApiClient'
   }).argv;

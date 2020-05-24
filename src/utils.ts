@@ -53,7 +53,7 @@ function getTypeDef(def: any): TypeDef {
     if (def.items) {
       name = getTypeDef(def.items).typeName;
     }
-    return { typeName: `${name}[]` };
+    return { typeName: `${name}`, array: true };
   }
 
   if (def.type === OBJECT) {
@@ -75,8 +75,11 @@ function getTypeDef(def: any): TypeDef {
 }
 
 function generateReturnType(resDef: any): TypeDef {
-  const success = Object.keys(resDef).find(code => code >= '200' && code < '300');
-  return getTypeDef(resDef[success].schema);
+  const success = Object.keys(resDef).find((code: string) => code >= '200' && code < '300');
+  if (success) {
+    return getTypeDef(resDef[success].schema);
+  }
+  return getTypeDef(undefined);
 }
 
 function generateArgument(paramDef: any): ArgumentDef {
@@ -135,7 +138,7 @@ export function yamlToDef(clientName: string, filePath: string): ApiDef {
   const modelsDef: ModelDef[] = Object.entries(yaml.definitions)
     .map(([name, def]) => generateModel(name, def));
 
-  const verbs = Object.values(yaml.paths).flatMap(path => Object.values(path));
+  const verbs = Object.values(yaml.paths).flatMap((path: any) => Object.values(path));
   const clientDef: ClientDef = {
     name: clientName,
     members: verbs.map(generateMember)

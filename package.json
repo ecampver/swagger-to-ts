@@ -1,6 +1,6 @@
 {
   "name": "@am/swagger-to-ts",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Generate Typescript models and client interface from Swagger yaml",
   "author": "Eduardo Campver",
   "license": "ISC",
@@ -9,7 +9,7 @@
     "swagger-to-ts": "build/index.js"
   },
   "scripts": {
-    "build": "tsc --lib esnext --outDir ./build index.ts",
+    "build": "tsc --lib esnext --outDir ./build --downlevelIteration index.ts",
     "start": "node ./build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
