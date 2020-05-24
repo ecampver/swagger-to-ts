@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as path from 'path';
 import { yamlToDef } from './utils';
 import { generateCode } from './codegen';
@@ -27,11 +28,3 @@ const { source, destination, clientName } = yargs
 
 const apiDef: ApiDef = yamlToDef(clientName, source);
 generateCode(apiDef, destination);
-
-
-
-
-/* TODO
- * 1. handle duplicated operationIds
- * 2. handle reserve words
- */

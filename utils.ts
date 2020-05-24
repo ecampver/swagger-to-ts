@@ -84,13 +84,14 @@ function generateArgument(paramDef: any): ArgumentDef {
   const typeDef = getTypeDef(paramDef);
 
   return {
-    name: camelize(name.replace(' ', '_')),
+    name: camelize(name.replace(' ', '_')), // TODO: extract, also handle reserve words
     typeDef,
     optional: !required
   };
 }
 
 function generateMember(memberDef: any): FunctionPropertyDef {
+  // TODO: handle duplicated operationIds
   const { operationId, parameters = [], responses } = memberDef;  
   return {
     name: operationId,
