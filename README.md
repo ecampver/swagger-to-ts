@@ -73,7 +73,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/User'
-
 definitions:
   User:
     properties:
@@ -85,7 +84,6 @@ definitions:
         $ref: '#/definitions/Address'
     required:  
       - id
-
   Address:
     properties:
       street:
@@ -117,7 +115,6 @@ export interface Address {
     street: string;
 }
 
-
 // client.ts
 import { User } from "./models";
 export interface UsersClient {
@@ -133,3 +130,7 @@ export interface UsersClient {
 * Supports only OpenAPI v2
 * Doesn't support `allOf` attribute
 * Doesn't handle duplicated `operationId` attributes on different paths
+
+## Compatibility
+
+This tool has only been tested on `Node v12` and `typescript@3.9.3`
