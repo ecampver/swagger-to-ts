@@ -9,9 +9,8 @@ import {
   ArgumentDef,
   FunctionPropertyDef,
   ClientDef,
-  ApiDef
+  ApiDef,
 } from './types';
-
 
 const KEY = 'key';
 const PROMISE = 'Promise';
@@ -23,7 +22,7 @@ const typesMap = {
   [INT]: ts.SyntaxKind.NumberKeyword,
   [STR]: ts.SyntaxKind.StringKeyword,
   [BOOL]: ts.SyntaxKind.BooleanKeyword,
-  [EMPTY]: ts.SyntaxKind.UnknownKeyword
+  [EMPTY]: ts.SyntaxKind.UnknownKeyword,
 };
 const QUESTION_TOKEN = ts.createToken(ts.SyntaxKind.QuestionToken);
 const NATIVE_TYPES = new Set([INT, STR, BOOL, DATE, EMPTY, PROMISE]);
@@ -37,18 +36,24 @@ function makeTypeNode(typeDef: TypeDef): ts.TypeNode {
   }
 
   if (typeDef.array) {
-    const arrayType: ts.TypeNode = makeTypeNode({ typeName });
+    const arrayType: ts.TypeNode = makeTypeNode({ typeName, value });
     return ts.createArrayTypeNode(arrayType);
   }
 
   if (typeName === ENUM) {
-    const stringLiterals: ts.StringLiteral[] = (<string[]>value).map(ts.createStringLiteral);
-    const stringLiteralTypeNodes: ts.LiteralTypeNode[] = stringLiterals.map(ts.createLiteralTypeNode)
+    const stringLiterals: ts.StringLiteral[] = (<string[]>value).map(
+      ts.createStringLiteral
+    );
+    const stringLiteralTypeNodes: ts.LiteralTypeNode[] = stringLiterals.map(
+      ts.createLiteralTypeNode
+    );
     return ts.createUnionTypeNode(stringLiteralTypeNodes);
   }
 
   if (typeName === OBJECT) {
-    const typeElements: ts.PropertySignature[] = (<PropertyDef[]>value).map(makeModelProperty);
+    const typeElements: ts.PropertySignature[] = (<PropertyDef[]>value).map(
+      makeModelProperty
+    );
     return ts.createTypeLiteralNode(typeElements);
   }
 
@@ -87,13 +92,18 @@ function makeArgument(argumentDef: ArgumentDef): ts.ParameterDeclaration {
   );
 }
 
-function makeFunctionMember(functionDef: FunctionPropertyDef): ts.PropertySignature {
+function makeFunctionMember(
+  functionDef: FunctionPropertyDef
+): ts.PropertySignature {
   const { name, args, returnTypeDef } = functionDef;
 
-  args.sort((arg, _) => arg.optional ? 1 : -1);
+  args.sort((arg, _) => (arg.optional ? 1 : -1));
 
   const returnTypeNode = makeTypeNode(returnTypeDef);
-  const promiseNode = ts.createTypeReferenceNode(PROMISE, /*typeArguments*/ [returnTypeNode]);
+  const promiseNode = ts.createTypeReferenceNode(
+    PROMISE,
+    /*typeArguments*/ [returnTypeNode]
+  );
 
   const functionTypeNode = ts.createFunctionTypeNode(
     /*typeParameters*/ undefined,
@@ -151,7 +161,7 @@ function makeModelType(modelDef: ModelDef): ts.DeclarationStatement {
     );
   }
 
-  properties.sort((prop, _) => prop.optional ? 1 : -1);
+  properties.sort((prop, _) => (prop.optional ? 1 : -1));
 
   return ts.createInterfaceDeclaration(
     /*decorators*/ undefined,
@@ -163,14 +173,17 @@ function makeModelType(modelDef: ModelDef): ts.DeclarationStatement {
   );
 }
 
-function isReferenceType(typeName: string) {
-  return typeName !== ENUM && !NATIVE_TYPES.has(typeName);
+function isImportableType(typeName: string) {
+  return typeName !== MAP && typeName !== ENUM && !NATIVE_TYPES.has(typeName);
 }
 
-function getFunctionPropertyTypeNames(propertyDef: FunctionPropertyDef): string[] {
-  return propertyDef.args.map((arg: ArgumentDef) => arg.typeDef.typeName)
+function getFunctionPropertyTypeNames(
+  propertyDef: FunctionPropertyDef
+): string[] {
+  return propertyDef.args
+    .map((arg: ArgumentDef) => arg.typeDef.typeName)
     .concat(propertyDef.returnTypeDef.typeName)
-    .filter((typeName: string) => isReferenceType(typeName));
+    .filter((typeName: string) => isImportableType(typeName));
 }
 
 function makeModelImports(clientDef: ClientDef): ts.ImportDeclaration {
@@ -180,9 +193,11 @@ function makeModelImports(clientDef: ClientDef): ts.ImportDeclaration {
 
   const importSpecifiers: ts.ImportSpecifier[] = [...typeNamesSet]
     .map((typeName: string) => ts.createIdentifier(typeName))
-    .map((id: ts.Identifier) => ts.createImportSpecifier(/*propertyName*/ undefined, id));
+    .map((id: ts.Identifier) =>
+      ts.createImportSpecifier(/*propertyName*/ undefined, id)
+    );
 
-  const namedImports: ts.NamedImports = ts.createNamedImports(importSpecifiers)
+  const namedImports: ts.NamedImports = ts.createNamedImports(importSpecifiers);
 
   const importClause: ts.ImportClause = ts.createImportClause(
     /*name*/ undefined,
@@ -190,7 +205,9 @@ function makeModelImports(clientDef: ClientDef): ts.ImportDeclaration {
     /*isTypeOnly*/ false
   );
 
-  const moduleSpecifier: ts.StringLiteral = ts.createStringLiteral(`./${MODELS_MODULE_NAME}`);
+  const moduleSpecifier: ts.StringLiteral = ts.createStringLiteral(
+    `./${MODELS_MODULE_NAME}`
+  );
 
   return ts.createImportDeclaration(
     /*decorators*/ undefined,
@@ -204,8 +221,20 @@ export function generateCode(apiDef: ApiDef, destinationPath: string) {
   const clientFilename = `${CLIENT_MODULE_NAME}.ts`;
   const modelsFilename = `${MODELS_MODULE_NAME}.ts`;
 
-  const clientInterfaceFile = ts.createSourceFile(clientFilename, '', ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
-  const modelsFile = ts.createSourceFile(modelsFilename, '', ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
+  const clientInterfaceFile = ts.createSourceFile(
+    /*fileName*/ clientFilename,
+    /*sourceText*/ '',
+    /*languageVersion*/ ts.ScriptTarget.Latest,
+    /*setParentNodes*/ false,
+    /*scriptKind*/ ts.ScriptKind.TS
+  );
+  const modelsFile = ts.createSourceFile(
+    modelsFilename,
+    '',
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS
+  );
 
   const modelNodes = apiDef.modelsDef.map(makeModelType);
   const clientInterfaceNode = makeClientInterface(apiDef.clientDef);
@@ -220,9 +249,16 @@ export function generateCode(apiDef: ApiDef, destinationPath: string) {
   const clientInterfaceCode = printer.printList(
     ts.ListFormat.MultiLineFunctionBodyStatements,
     ts.createNodeArray([modelImportsNode, clientInterfaceNode]),
-    modelsFile
+    clientInterfaceFile
   );
 
+  if (!fs.existsSync(destinationPath)) {
+    fs.mkdirSync(destinationPath, { recursive: true });
+  }
+
   fs.writeFileSync(path.join(destinationPath, modelsFilename), modelsCode);
-  fs.writeFileSync(path.join(destinationPath, clientFilename), clientInterfaceCode);
+  fs.writeFileSync(
+    path.join(destinationPath, clientFilename),
+    clientInterfaceCode
+  );
 }

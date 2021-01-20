@@ -1,5 +1,5 @@
 {
-  "name": "@am/swagger-to-ts",
+  "name": "swagger-to-ts",
   "version": "0.0.3",
   "description": "Generate Typescript models and client interface from Swagger yaml",
   "author": "Eduardo Campver",

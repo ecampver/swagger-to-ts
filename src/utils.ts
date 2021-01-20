@@ -1,7 +1,18 @@
 import { safeLoad } from 'js-yaml';
 import * as fs from 'fs';
 import * as camelize from 'camelize';
-import { INT, STR, BOOL, DATE, EMPTY, ENUM, ARRAY, OBJECT, MAP, REF } from './constants';
+import {
+  INT,
+  STR,
+  BOOL,
+  DATE,
+  EMPTY,
+  ENUM,
+  ARRAY,
+  OBJECT,
+  MAP,
+  REF,
+} from './constants';
 import {
   TypeDef,
   PropertyDef,
@@ -9,26 +20,25 @@ import {
   ArgumentDef,
   FunctionPropertyDef,
   ClientDef,
-  ApiDef
+  ApiDef,
 } from './types';
-
 
 const DEFAULT_TYPE = STR;
 const typesMap = {
-  'int32': INT,
-  'int64': INT,
-  'number': INT,
-  'integer': INT,
-  'float': INT,
-  'double': INT,
-  'string': STR,
-  'byte': STR,
-  'binary': STR,
-  'password': STR,
-  'email': STR,
-  'boolean': BOOL,
-  'date': DATE,
-  'date-time': DATE
+  int32: INT,
+  int64: INT,
+  number: INT,
+  integer: INT,
+  float: INT,
+  double: INT,
+  string: STR,
+  byte: STR,
+  binary: STR,
+  password: STR,
+  email: STR,
+  boolean: BOOL,
+  date: DATE,
+  'date-time': DATE,
 };
 
 function getTypeDef(def: any): TypeDef {
@@ -41,23 +51,31 @@ function getTypeDef(def: any): TypeDef {
   }
 
   if (def[REF]) {
-    return { typeName: def[REF].split('/')[2] };
+    const typeName = def[REF].split('/').pop();
+    return { typeName };
   }
-  
+
   if (def.enum) {
     return { typeName: ENUM, value: def.enum };
   }
 
   if (def.type === ARRAY) {
-    let name = DEFAULT_TYPE;
+    let typeName: string = DEFAULT_TYPE,
+      value: any;
     if (def.items) {
-      name = getTypeDef(def.items).typeName;
+      const typeDef = getTypeDef(def.items);
+      typeName = typeDef.typeName;
+      value = typeDef.value;
     }
-    return { typeName: `${name}`, array: true };
+    if (typeName === ENUM) {
+      return { array: true, typeName, value };
+    }
+    return { array: true, typeName };
   }
 
   if (def.type === OBJECT) {
-    let value: TypeDef['value'] = [], typeName = OBJECT;
+    let value: TypeDef['value'] = [],
+      typeName = OBJECT;
     if (def.properties) {
       value = generateProperties(def.properties);
     } else if (def.additionalProperties) {
@@ -74,10 +92,26 @@ function getTypeDef(def: any): TypeDef {
   return { typeName: typesMap[def.type] || DEFAULT_TYPE };
 }
 
+function getSchema(def: any) {
+  if (typeof def !== 'object') return null;
+  if (!def) return null;
+  if (def.schema) return def.schema;
+
+  for (const subdef of Object.values(def)) {
+    const schema = getSchema(subdef);
+    if (schema) {
+      return schema;
+    }
+  }
+}
+
 function generateReturnType(resDef: any): TypeDef {
-  const success = Object.keys(resDef).find((code: string) => code >= '200' && code < '300');
-  if (success) {
-    return getTypeDef(resDef[success].schema);
+  const responseKey = Object.keys(resDef).find(
+    (code: string) => code === 'default' || (code >= '200' && code < '300')
+  );
+  if (responseKey) {
+    const schema = getSchema(resDef[responseKey]);
+    return getTypeDef(schema);
   }
   return getTypeDef(undefined);
 }
@@ -89,37 +123,42 @@ function generateArgument(paramDef: any): ArgumentDef {
   return {
     name: camelize(name.replace(' ', '_')), // TODO: extract, also handle reserve words
     typeDef,
-    optional: !required
+    optional: !required,
   };
 }
 
 function generateMember(memberDef: any): FunctionPropertyDef {
   // TODO: handle duplicated operationIds
-  const { operationId, parameters = [], responses } = memberDef;  
+  const { operationId, parameters = [], responses } = memberDef;
   return {
     name: operationId,
     args: parameters.map(generateArgument),
-    returnTypeDef: generateReturnType(responses)
-  }
+    returnTypeDef: generateReturnType(responses),
+  };
 }
 
-function generateProperties(propertyDefs: any[], required: string[] = []): PropertyDef[] {
-  return Object.entries(propertyDefs)
-    .map(([name, schema]) => ({
-      name,
-      typeDef: getTypeDef(schema),
-      optional: !required.includes(name)
-    }));
+function generateProperties(
+  propertyDefs: any[],
+  required: string[] = []
+): PropertyDef[] {
+  return Object.entries(propertyDefs).map(([name, schema]) => ({
+    name,
+    typeDef: getTypeDef(schema),
+    optional: !required.includes(name),
+  }));
 }
 
 function generateModel(name: string, def: any): ModelDef {
-  let props: PropertyDef[] = [], typeName = OBJECT;
+  let props: PropertyDef[] = [],
+    typeName = OBJECT;
 
   if (def.enum) {
-    props = def.enum; 
+    props = def.enum;
     typeName = ENUM;
   } else if (def.allOf) {
-    console.warn(`[WARNING] - allOf not supported, model ${name} will be generated empty.`);
+    console.warn(
+      `[WARNING] - allOf not supported, model ${name} will be generated empty.`
+    );
   } else {
     props = generateProperties(def.properties, def.required);
   }
@@ -127,21 +166,31 @@ function generateModel(name: string, def: any): ModelDef {
   return {
     name,
     typeName,
-    properties: props
-  }
+    properties: props,
+  };
+}
+
+function isOpenAPIv3(yaml: any): boolean {
+  return (yaml.swagger || yaml.openapi).startsWith('3');
 }
 
 export function yamlToDef(clientName: string, filePath: string): ApiDef {
   const yamlDef = fs.readFileSync(filePath, 'utf8');
-  const yaml = safeLoad(yamlDef)
+  const yaml = safeLoad(yamlDef);
+  const definitions = isOpenAPIv3(yaml)
+    ? yaml.components.schemas
+    : yaml.definitions;
 
-  const modelsDef: ModelDef[] = Object.entries(yaml.definitions)
-    .map(([name, def]) => generateModel(name, def));
+  const modelsDef: ModelDef[] = Object.entries(definitions).map(([name, def]) =>
+    generateModel(name, def)
+  );
 
-  const verbs = Object.values(yaml.paths).flatMap((path: any) => Object.values(path));
+  const verbs = Object.values(yaml.paths).flatMap((path: any) =>
+    Object.values(path)
+  );
   const clientDef: ClientDef = {
     name: clientName,
-    members: verbs.map(generateMember)
+    members: verbs.map(generateMember),
   };
 
   return { clientDef, modelsDef };

@@ -26,7 +26,7 @@ export interface FunctionPropertyDef {
 
 export interface ClientDef {
   name: string;
-  members: FunctionPropertyDef[]
+  members: FunctionPropertyDef[];
 }
 
 export interface ApiDef {
