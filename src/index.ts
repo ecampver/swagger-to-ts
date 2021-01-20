@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import * as path from 'path';
 import * as yargs from 'yargs';
-import { yamlToDef } from './src/utils';
-import { generateCode } from './src/codegen';
-import { ApiDef } from './src/types';
+import { yamlToDef } from './utils';
+import { generateCode } from './codegen';
+import { ApiDef } from './types';
 
 const { source, destination, clientName } = yargs
   .usage('Usage: $0 [-s path] [-d path] [-n]')

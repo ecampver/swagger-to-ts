@@ -1,16 +1,17 @@
 {
-  "name": "swagger-to-ts",
-  "version": "0.0.3",
+  "name": "@ecmpvr/swagger-to-ts",
+  "version": "0.0.4",
   "description": "Generate Typescript models and client interface from Swagger yaml",
   "author": "Eduardo Campver",
   "license": "ISC",
-  "main": "build/index.js",
+  "main": "dist/index.js",
   "bin": {
-    "swagger-to-ts": "build/index.js"
+    "swagger-to-ts": "dist/index.js"
   },
+  "types": "dist/types/index.d.ts",
   "scripts": {
-    "build": "tsc --lib esnext --outDir ./build --downlevelIteration index.ts",
-    "start": "node ./build/index.js",
+    "build": "rm -rf ./dist && tsc --lib esnext --outDir ./dist --downlevelIteration ./src/index.ts",
+    "start": "node ./dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

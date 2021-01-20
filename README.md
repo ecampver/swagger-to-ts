@@ -1,11 +1,11 @@
-# swagget-to-ts
+# swagger-to-ts
 
 Generate Typescript models and client interface from Swagger yaml
 
 ## Install
 
 ```bash
-npm install -g swagger-to-ts
+npm install -g @ecmpvr/swagger-to-ts
 ```
 
 ## Usage
@@ -127,7 +127,6 @@ export interface UsersClient {
 
 ## Limitations
 
-* Supports only OpenAPI v2
 * Doesn't support `allOf` attribute
 * Doesn't handle duplicated `operationId` attributes on different paths
 
